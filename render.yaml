@@ -2,5 +2,10 @@ services:
   - type: web
     name: naotin-students
     env: python
+    region: oregon  # or keep default
+    plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: python app.py
+    envVars:
+      - key: PORT
+        value: 10000  # Render automatically replaces this
