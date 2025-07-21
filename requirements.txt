@@ -1,4 +1,4 @@
 flask
 gunicorn
-pandas==2.0.3 --only-binary :all:
 openai
+pandas --only-binary :all:
