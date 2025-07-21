@@ -81,5 +81,6 @@ def get_students():
     return jsonify(students), 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))  # Required for Render
+    app.run(host='0.0.0.0', port=port, debug=True)
 
