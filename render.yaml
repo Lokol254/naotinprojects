@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: nausa-app
-    env: python
+    name: naotin-backend
+    runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
-      - key: OPENAI_API_KEY
-        value: your_openai_key_here
+      - key: SECRET_KEY
+        value: somesecretkey
