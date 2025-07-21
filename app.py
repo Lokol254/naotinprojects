@@ -1,86 +1,85 @@
-from flask import Flask, request, jsonify, send_file, render_template_string, session, redirect, url_for
-import pandas as pd
-from io import BytesIO
-from flask_cors import CORS
-from werkzeug.security import generate_password_hash, check_password_hash
-import os
 
-app = Flask(__name__)
-app.secret_key = 'naotin_secret_key'
-CORS(app)
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, send_file from flask_sqlalchemy import SQLAlchemy from flask_cors import CORS from werkzeug.security import generate_password_hash, check_password_hash import pandas as pd from io import BytesIO import os
 
-# Simulated database
-students = []
-users = {}  # username -> hashed_password
+app = Flask(name) app.secret_key = 'naotin_secret_key' app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///naotin.db' app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-@app.route('/')
-def home():
-    if not os.path.exists("index.html"):
-        return "Error: index.html file not found", 404
-    with open("index.html", "r", encoding="utf-8") as f:
-        return render_template_string(f.read())
+CORS(app) db = SQLAlchemy(app)
 
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    username = data.get('username')
-    if not username or not data.get('password'):
-        return jsonify({'error': 'Username and password required'}), 400
+--- Models ---
 
-    if username in users:
-        return jsonify({'error': 'Username already exists'}), 400
+class User(db.Model): id = db.Column(db.Integer, primary_key=True) username = db.Column(db.String(80), unique=True, nullable=False) password = db.Column(db.String(120), nullable=False) role = db.Column(db.String(10), default='student')  # 'admin' or 'student'
 
-    hashed_password = generate_password_hash(data.get('password'))
-    users[username] = hashed_password
+class Student(db.Model): id = db.Column(db.Integer, primary_key=True) name = db.Column(db.String(100)) school = db.Column(db.String(100)) course = db.Column(db.String(100)) designation = db.Column(db.String(100)) village = db.Column(db.String(100)) year = db.Column(db.String(20)) phone = db.Column(db.String(20)) parentPhone = db.Column(db.String(20)) fees = db.Column(db.String(20)) username = db.Column(db.String(80))
 
-    student_data = {
-        'name': data.get('name'),
-        'school': data.get('school'),
-        'course': data.get('course'),
-        'designation': data.get('designation'),
-        'village': data.get('village'),
-        'year': data.get('year'),
-        'phone': data.get('phone'),
-        'parentPhone': data.get('parentPhone'),
-        'fees': data.get('fees'),
-        'username': username
-    }
-    students.append(student_data)
-    return jsonify({'message': 'Registered successfully'}), 200
+--- Routes ---
 
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+@app.route('/') def index(): return render_template("index.html")
 
-    if username in users and check_password_hash(users[username], password):
-        session['user'] = username
-        return jsonify({'message': 'Login successful'}), 200
-    return jsonify({'error': 'Invalid credentials'}), 401
+@app.route('/register', methods=['POST']) def register(): data = request.form username = data.get('username') password = data.get('password')
 
-@app.route('/logout')
-def logout():
-    session.pop('user', None)
-    return redirect(url_for('home'))
+if User.query.filter_by(username=username).first():
+    return "Username already exists", 400
 
-@app.route('/download', methods=['GET'])
-def download():
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized access'}), 403
-    df = pd.DataFrame(students)
-    output = BytesIO()
-    df.to_excel(output, index=False)
-    output.seek(0)
-    return send_file(output, download_name="students_report.xlsx", as_attachment=True)
+hashed_password = generate_password_hash(password)
+new_user = User(username=username, password=hashed_password, role='student')
+db.session.add(new_user)
 
-@app.route('/students', methods=['GET'])
-def get_students():
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    return jsonify(students), 200
+student = Student(
+    name=data.get('name'),
+    school=data.get('school'),
+    course=data.get('course'),
+    designation=data.get('designation'),
+    village=data.get('village'),
+    year=data.get('year'),
+    phone=data.get('phone'),
+    parentPhone=data.get('parentPhone'),
+    fees=data.get('fees'),
+    username=username
+)
+db.session.add(student)
+db.session.commit()
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Required for Render
-    app.run(host='0.0.0.0', port=port, debug=True)
+return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST']) def login(): if request.method == 'POST': data = request.form user = User.query.filter_by(username=data.get('username')).first() if user and check_password_hash(user.password, data.get('password')): session['user'] = user.username session['role'] = user.role return redirect(url_for('dashboard')) return "Invalid credentials", 401 return render_template("login.html")
+
+@app.route('/dashboard') def dashboard(): if 'user' not in session: return redirect(url_for('login'))
+
+user_role = session.get('role')
+if user_role == 'admin':
+    students = Student.query.all()
+    return render_template("admin_dashboard.html", students=students)
+else:
+    students = Student.query.all()
+    return render_template("dashboard.html", students=students)
+
+@app.route('/download') def download(): if 'user' not in session or session.get('role') != 'admin': return "Unauthorized", 403
+
+students = Student.query.all()
+df = pd.DataFrame([{
+    'Name': s.name,
+    'School': s.school,
+    'Course': s.course,
+    'Designation': s.designation,
+    'Village': s.village,
+    'Year': s.year,
+    'Phone': s.phone,
+    'Parent Phone': s.parentPhone,
+    'Fees Arrears': s.fees
+} for s in students])
+
+output = BytesIO()
+df.to_excel(output, index=False)
+output.seek(0)
+return send_file(output, download_name="students_report.xlsx", as_attachment=True)
+
+@app.route('/logout') def logout(): session.clear() return redirect(url_for('index'))
+
+--- AI Logic Placeholder (Future Add-on) ---
+
+e.g., smart student recommendations, AI-assisted profile updates, etc.
+
+from openai import OpenAI or HuggingFace pipelines in future
+
+if name == 'main': with app.app_context(): db.create_all() port = int(os.environ.get("PORT", 5000)) app.run(host="0.0.0.0", port=port)
 
