@@ -1,0 +1,6 @@
+echo "services:
+  - type: web
+    name: student-association
+    env: python
+    buildCommand: \"\"
+    startCommand: python app.py" > render.yaml
