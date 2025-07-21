@@ -1,11 +1,9 @@
 services:
   - type: web
-    name: naotin-students
+    name: nausa-app
     env: python
-    region: oregon  # or keep default
-    plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
+    startCommand: gunicorn app:app
     envVars:
-      - key: PORT
-        value: 10000  # Render automatically replaces this
+      - key: OPENAI_API_KEY
+        value: your_openai_key_here
