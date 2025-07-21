@@ -1,77 +1,39 @@
 
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, send_file
-from flask_cors import CORS
-from werkzeug.security import generate_password_hash, check_password_hash
-from io import BytesIO
-import pandas as pd
-import os
+from flask import Flask, render_template, request, redirect, url_for, session, send_file from werkzeug.security import generate_password_hash, check_password_hash import pandas as pd import os from io import BytesIO from flask_cors import CORS
 
-app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key")  # For session management
-CORS(app)
+app = Flask(name) CORS(app) app.secret_key = 'naotin_secret_key'
 
-# Dummy "database"
-students = []
-admin_credentials = {"username": "admin", "password": generate_password_hash("admin123")}
+data_store = []  # Simulate a DB (use SQLite/MySQL in production)
 
-# === Routes ===
+Dummy admin user
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+admin_user = {'username': 'admin', 'password': generate_password_hash('admin123')}
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        user = request.form["username"]
-        pwd = request.form["password"]
+@app.route('/') def index(): return redirect(url_for('login'))
 
-        if user == admin_credentials["username"] and check_password_hash(admin_credentials["password"], pwd):
-            session["admin"] = True
-            return redirect("/admin")
-        else:
-            return render_template("login.html", error="Invalid credentials")
-    return render_template("login.html")
+@app.route('/login', methods=['GET', 'POST']) def login(): if request.method == 'POST': username = request.form['username'] password = request.form['password']
 
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
+if username == admin_user['username'] and check_password_hash(admin_user['password'], password):
+        session['user'] = 'admin'
+        return redirect(url_for('admin_dashboard'))
 
-@app.route("/admin")
-def admin_dashboard():
-    if not session.get("admin"):
-        return redirect(url_for("login"))
-    return render_template("admin_dashboard.html", students=students)
+    for student in data_store:
+        if student['username'] == username and check_password_hash(student['password'], password):
+            session['user'] = username
+            return redirect(url_for('student_dashboard'))
 
-@app.route("/register", methods=["POST"])
-def register_student():
-    data = request.form
-    student = {
-        "name": data["name"],
-        "email": data["email"],
-        "year": data["year"],
-        "course": data["course"]
-    }
-    students.append(student)
-    return redirect(url_for("admin_dashboard"))
+    return 'Invalid credentials'
+return render_template('login.html')
 
-@app.route("/export")
-def export_excel():
-    df = pd.DataFrame(students)
-    output = BytesIO()
-    df.to_excel(output, index=False)
-    output.seek(0)
-    return send_file(output, as_attachment=True, download_name="students.xlsx", mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+@app.route('/register', methods=['GET', 'POST']) def register(): if request.method == 'POST': new_user = { 'username': request.form['username'], 'fullname': request.form['fullname'], 'email': request.form['email'], 'course': request.form['course'], 'password': generate_password_hash(request.form['password']) } data_store.append(new_user) return redirect(url_for('login')) return render_template('register.html')
 
-# === AI Feature (Basic) ===
-@app.route("/ai/summary")
-def ai_summary():
-    if not students:
-        return "No data available"
-    summary = f"Total students: {len(students)}"
-    return summary
+@app.route('/admin') def admin_dashboard(): if 'user' in session and session['user'] == 'admin': return render_template('admin.html', students=data_store) return redirect(url_for('login'))
 
-# === Run App ===
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route('/student') def student_dashboard(): if 'user' in session and session['user'] != 'admin': student = next((s for s in data_store if s['username'] == session['user']), None) return render_template('student.html', student=student) return redirect(url_for('login'))
+
+@app.route('/logout') def logout(): session.pop('user', None) return redirect(url_for('login'))
+
+@app.route('/download') def download(): if 'user' in session and session['user'] == 'admin': df = pd.DataFrame(data_store) output = BytesIO() with pd.ExcelWriter(output, engine='xlsxwriter') as writer: df.to_excel(writer, index=False, sheet_name='Students') writer.sheets['Students'].write(0, 0, 'Naotin Unit Students Database') output.seek(0) return send_file(output, download_name='naotin_students.xlsx', as_attachment=True) return redirect(url_for('login'))
+
+if name == 'main': port = int(os.environ.get("PORT", 5000)) app.run(host='0.0.0.0', port=port)
+
