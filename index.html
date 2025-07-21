@@ -1,198 +1,81 @@
-<!-- index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Naotin Unit Students Association</title>
-    <link rel="stylesheet" href="/static/styles.css">
+  <title>NAUSA Portal</title>
+  <style>
+    body { font-family: Arial; background: #f0f0f0; padding: 20px; }
+    h2, h3 { color: #2c3e50; }
+    form { margin: 15px 0; padding: 10px; background: #fff; border-radius: 8px; box-shadow: 0 0 5px #ccc; }
+    input, select, button {
+      display: block; width: 100%; padding: 10px; margin-bottom: 10px;
+      border-radius: 5px; border: 1px solid #ccc;
+    }
+    table { border-collapse: collapse; width: 100%; background: #fff; margin-top: 20px; }
+    table th, table td { padding: 10px; border: 1px solid #ddd; }
+    .logout-btn, .export-btn { display: inline-block; margin: 10px 0; padding: 10px 15px; background: #27ae60; color: white; border: none; border-radius: 5px; text-decoration: none; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Welcome to Naotin Students Association</h2>
-        <a href="/login">Login</a> | <a href="/register">Register</a>
-    </div>
+
+  {% if session.username %}
+    <h2>Welcome, {{ session.username }}!</h2>
+    <a class="logout-btn" href="/logout">Logout</a>
+
+    {% if is_admin %}
+      <h3>Admin Panel – Student Records</h3>
+      <table>
+        <tr>
+          <th>Name</th><th>Village</th><th>Phone</th><th>Parent Phone</th>
+          <th>Designation</th><th>Year</th><th>AI Prediction</th>
+        </tr>
+        {% for student in students %}
+        <tr>
+          <td>{{ student.name }}</td><td>{{ student.village }}</td>
+          <td>{{ student.phone }}</td><td>{{ student.parent_phone }}</td>
+          <td>{{ student.designation }}</td><td>{{ student.year }}</td>
+          <td>{{ student.ai_prediction }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      <a class="export-btn" href="/export">Export Excel</a>
+    {% endif %}
+
+    <h3>Add Your Details</h3>
+    <form action="/submit" method="post">
+      <input name="name" placeholder="Full Name" required>
+      <input name="village" placeholder="Village" required>
+      <input name="phone" placeholder="Your Phone Number" required>
+      <input name="parent_phone" placeholder="Parent's Phone Number" required>
+      <input name="designation" placeholder="Designation (e.g., Chair, Member)" required>
+      <select name="year" required>
+        <option value="">Select Year of Study</option>
+        <option value="1st">1st Year</option>
+        <option value="2nd">2nd Year</option>
+        <option value="3rd">3rd Year</option>
+        <option value="4th">4th Year</option>
+      </select>
+      <button type="submit">Submit</button>
+    </form>
+
+  {% else %}
+    <h2>Login</h2>
+    <form action="/login" method="post">
+      <input name="username" placeholder="Username" required>
+      <input name="password" type="password" placeholder="Password" required>
+      <button type="submit">Login</button>
+    </form>
+
+    <h2>Register</h2>
+    <form action="/register" method="post">
+      <input name="username" placeholder="New Username" required>
+      <input name="password" type="password" placeholder="New Password" required>
+      <select name="role" required>
+        <option value="student">Student</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button type="submit">Register</button>
+    </form>
+  {% endif %}
+
 </body>
 </html>
-
-<!-- login.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <div class="form-container">
-        <h2>Login</h2>
-        <form action="/login" method="POST">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit" class="btn blue">Sign In</button>
-        </form>
-    </div>
-</body>
-</html>
-
-<!-- register.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <div class="form-container">
-        <h2>Register</h2>
-        <form action="/register" method="POST">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <input type="text" name="name" placeholder="Full Name" required>
-            <input type="text" name="school" placeholder="School" required>
-            <input type="text" name="course" placeholder="Course" required>
-            <input type="text" name="designation" placeholder="Designation" required>
-            <input type="text" name="village" placeholder="Village" required>
-            <input type="number" name="year" placeholder="Year of Study" required>
-            <input type="text" name="phone" placeholder="Phone Number" required>
-            <input type="text" name="parentPhone" placeholder="Parent Phone Number" required>
-            <input type="text" name="fees" placeholder="Fees Arrears" required>
-            <button type="submit" class="btn blue">Sign Up</button>
-        </form>
-    </div>
-</body>
-</html>
-
-<!-- dashboard.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard</title>
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <div class="container">
-        <h2>Student Dashboard</h2>
-        <a href="/logout" class="btn">Logout</a>
-        <h3>All Registered Students</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th><th>School</th><th>Course</th><th>Designation</th><th>Village</th>
-                    <th>Year</th><th>Phone</th><th>Parent Phone</th><th>Fees Arrears</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for student in students %}
-                <tr>
-                    <td>{{ student.name }}</td><td>{{ student.school }}</td><td>{{ student.course }}</td><td>{{ student.designation }}</td>
-                    <td>{{ student.village }}</td><td>{{ student.year }}</td><td>{{ student.phone }}</td><td>{{ student.parentPhone }}</td><td>{{ student.fees }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>
-
-<!-- admin_dashboard.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <div class="container">
-        <h2>Admin Dashboard</h2>
-        <a href="/logout" class="btn">Logout</a>
-        <a href="/download" class="btn green">Download Excel Report</a>
-        <h3>All Registered Students</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th><th>School</th><th>Course</th><th>Designation</th><th>Village</th>
-                    <th>Year</th><th>Phone</th><th>Parent Phone</th><th>Fees Arrears</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for student in students %}
-                <tr>
-                    <td>{{ student.name }}</td><td>{{ student.school }}</td><td>{{ student.course }}</td><td>{{ student.designation }}</td>
-                    <td>{{ student.village }}</td><td>{{ student.year }}</td><td>{{ student.phone }}</td><td>{{ student.parentPhone }}</td><td>{{ student.fees }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>
-
-<!-- styles.css (in /static/styles.css) -->
-body {
-    font-family: Arial, sans-serif;
-    background-color: #ffffff;
-    color: #333;
-    margin: 0;
-    padding: 0;
-}
-
-.container, .form-container {
-    max-width: 900px;
-    margin: auto;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
-
-h2, h3 {
-    color: #228B22;
-}
-
-input, button {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    font-size: 16px;
-}
-
-button.btn {
-    background-color: #228B22;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-button.btn.blue {
-    background-color: #007BFF;
-}
-
-button.btn.green {
-    background-color: #28a745;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-th, td {
-    border: 1px solid #ccc;
-    padding: 10px;
-    text-align: left;
-}
-
-th {
-    background-color: #ffff99;
-}
